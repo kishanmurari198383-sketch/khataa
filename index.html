@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Khata – Books, GST aur ITR</title>
+<style>
+:root{--bg:#f4f5f1;--sf:#fff;--ink:#1c2626;--mute:#68736f;--ac:#0d6b5f;--acs:#dcefe9;--ln:#d9ded9;--bad:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a19;--sf:#1d2625;--ink:#e6ecea;--mute:#93a29d;--ac:#4cc2b0;--acs:#21393a;--ln:#2d3a38;--bad:#ff8a80;color-scheme:dark}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:980px;margin:0 auto;padding:12px}
+header{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px}
+h1{font:700 20px Georgia,serif;margin:0;color:var(--ac)}h2{font-size:17px;margin:18px 0 8px}
+nav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--ln);margin-bottom:14px}
+nav button{border:0;background:none;color:var(--mute);padding:10px 12px;font:inherit;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--ac);border-color:var(--ac);font-weight:600}
+.c{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:12px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+label{display:block;font-size:12px;color:var(--mute)}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button.b{background:var(--ac);color:var(--bg);border:0;border-radius:6px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+button.s{background:var(--acs);color:var(--ac)}button.d{background:none;color:var(--bad);padding:2px 6px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.t{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:480px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--ln)}th{font-size:12px;color:var(--mute);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.k{font:700 22px Georgia,serif}.m{color:var(--mute);font-size:12px}.bad{color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+@media print{nav,header button,.np{display:none}}
+</style></head><body><div class="w" id="app"></div>
+<script>
+const ST=["Uttar Pradesh","Delhi","Maharashtra","Gujarat","Rajasthan","Madhya Pradesh","Bihar","Uttarakhand","Haryana","Punjab","Karnataka","Tamil Nadu","West Bengal","Other"];
+let db={cur:null,firms:[]};
+try{const x=JSON.parse(localStorage.getItem('khata')||'null');if(x)db=x}catch(e){}
+const save=()=>{try{localStorage.setItem('khata',JSON.stringify(db))}catch(e){}};
+let tab='home';
+const F=()=>db.firms.find(f=>f.id==db.cur);
+const $=s=>document.querySelector(s);
+const v=id=>$('#'+id).value;const nv=id=>+v(id)||0;
+const inr=n=>'₹'+(Math.round(n*100)/100).toLocaleString('en-IN');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const opt=(a,sel)=>a.map(x=>`<option ${x==sel?'selected':''}>${esc(x)}</option>`).join('');
+const TY={sales:'Sales',purchase:'Purchase',receipt:'Receipt',payment:'Payment'};
+
+function calc(f,x){
+ const p=f.parties.find(q=>q.id==x.party);const intra=!p||p.state==f.state;
+ let tx=0,g=0;for(const l of x.items){tx+=l.amt;g+=l.amt*l.rate/100}
+ if(x.type=='receipt'||x.type=='payment')g=0;
+ return{tx,g,tot:tx+g,intra,cg:intra?g/2:0,sg:intra?g/2:0,ig:intra?0:g};
+}
+function sum(f,type){const r={tx:0,cg:0,sg:0,ig:0,tot:0};
+ for(const x of f.vouchers)if(x.type==type){const c=calc(f,x);r.tx+=c.tx;r.cg+=c.cg;r.sg+=c.sg;r.ig+=c.ig;r.tot+=c.tot}return r}
+
+function render(){
+ const a=$('#app'),f=F();
+ let h=`<header><h1>Khata</h1><div class="row np" style="margin:0"><select id="fs" onchange="db.cur=this.value;save();render()">${db.firms.map(x=>`<option value="${x.id}" ${x.id==db.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select><button class="b s" onclick="tab='newfirm';render()">+ Naya client</button></div></header>`;
+ if(!f||tab=='newfirm'){
+  h+=`<div class="c"><h2 style="margin-top:0">Naya client / firm</h2><div class="g"><div><label>Naam</label><input id="fn"></div><div><label>GSTIN</label><input id="fg" maxlength="15"></div><div><label>State</label><select id="fst">${opt(ST,'Uttar Pradesh')}</select></div></div><div class="row"><button class="b" onclick="addFirm()">Save karein</button>${f?'<button class="b s" onclick="tab=\'home\';render()">Wapas</button>':''}</div></div>`;
+  a.innerHTML=h;return}
+ const T=[['home','Home'],['vch','Vouchers'],['par','Parties'],['gst','GST'],['itr','ITR'],['data','Data']];
+ h+=`<nav>${T.map(t=>`<button class="${tab==t[0]?'on':''}" onclick="tab='${t[0]}';render()">${t[1]}</button>`).join('')}</nav>`;
+ h+=({home,vch,par,gst,itr,data}[tab])(f);
+ a.innerHTML=h;
+}
+function addFirm(){const n=v('fn').trim();if(!n)return alert('Naam likhein');
+ const f={id:uid(),name:n,gstin:v('fg').toUpperCase(),state:v('fst'),parties:[],vouchers:[]};
+ db.firms.push(f);db.cur=f.id;tab='home';save();render()}
+
+function home(f){
+ const s=sum(f,'sales'),p=sum(f,'purchase'),rc=sum(f,'receipt').tot,py=sum(f,'payment').tot;
+ const k=(l,x)=>`<div class="c"><div class="m">${l}</div><div class="k">${inr(x)}</div></div>`;
+ return`<div class="g">${k('Sales (taxable)',s.tx)}${k('Purchase (taxable)',p.tx)}${k('Profit (taxable)',s.tx-p.tx)}${k('Mila (receipt)',rc)}${k('Diya (payment)',py)}</div>
+ <div class="c"><b>${esc(f.name)}</b><div class="m">GSTIN: ${esc(f.gstin||'—')} · State: ${esc(f.state)} · ${f.vouchers.length} vouchers · ${f.parties.length} parties</div></div>
+ <h2>Party balance</h2>${bal(f)}`;
+}
+function bal(f){
+ const rows=f.parties.map(p=>{let b=0;for(const x of f.vouchers)if(x.party==p.id){const t=calc(f,x).tot;b+=({sales:t,receipt:-t,purchase:-t,payment:t})[x.type]}return[p.name,b]}).filter(r=>Math.abs(r[1])>0.004);
+ if(!rows.length)return'<div class="c m">Abhi koi balance nahi. Pehle party aur voucher add karein.</div>';
+ return`<div class="c t"><table><tr><th>Party</th><th class="n">Balance</th><th></th></tr>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="n">${inr(Math.abs(r[1]))}</td><td>${r[1]>0?'lena hai':'dena hai'}</td></tr>`).join('')}</table></div>`;
+}
+
+function par(f){
+ return`<div class="c"><div class="g"><div><label>Party ka naam</label><input id="pn"></div><div><label>GSTIN</label><input id="pg" maxlength="15"></div><div><label>State</label><select id="ps">${opt(ST,f.state)}</select></div></div><div class="row"><button class="b" onclick="addPar()">Party add karein</button></div></div>
+ <div class="c t"><table><tr><th>Naam</th><th>GSTIN</th><th>State</th><th></th></tr>${f.parties.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.gstin||'—')}</td><td>${esc(p.state)}</td><td><button class="d" onclick="delPar('${p.id}')">hatayein</button></td></tr>`).join('')||'<tr><td colspan=4 class="m">Koi party nahi.</td></tr>'}</table></div>`;
+}
+function addPar(){const f=F(),n=v('pn').trim();if(!n)return alert('Naam likhein');
+ f.parties.push({id:uid(),name:n,gstin:v('pg').toUpperCase(),state:v('ps')});save();render()}
+function delPar(i){const f=F();if(f.vouchers.some(x=>x.party==i))return alert('Is party ke voucher hain, pehle unhe hatayein.');
+ f.parties=f.parties.filter(p=>p.id!=i);save();render()}
+
+function vch(f){
+ const today=new Date().toISOString().slice(0,10);
+ const L=[0,1,2].map(i=>`<div class="g" style="margin-top:6px"><div style="grid-column:span 2"><label>Item / vivaran ${i+1}</label><input id="d${i}"></div><div><label>Amount (GST se pehle)</label><input id="a${i}" type="number" step="any"></div><div><label>GST %</label><select id="r${i}">${[0,5,12,18,28].map(r=>`<option ${r==18?'selected':''}>${r}</option>`).join('')}</select></div></div>`).join('');
+ const list=[...f.vouchers].sort((x,y)=>y.date.localeCompare(x.date));
+ return`<div class="c"><div class="g"><div><label>Type</label><select id="vt">${Object.entries(TY).map(e=>`<option value="${e[0]}">${e[1]}</option>`).join('')}</select></div><div><label>Date</label><input id="vd" type="date" value="${today}"></div><div><label>Invoice / voucher no.</label><input id="vn" value="${f.vouchers.length+1}"></div><div><label>Party</label><select id="vp">${f.parties.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div></div>${L}
+ <div class="m" style="margin-top:6px">Receipt/Payment mein GST % ignore hota hai. Same state = CGST+SGST, alag state = IGST.</div><div class="row"><button class="b" onclick="addV()">Voucher save karein</button></div></div>
+ <div class="c t"><table><tr><th>Date</th><th>Type</th><th>No.</th><th>Party</th><th class="n">GST</th><th class="n">Total</th><th></th></tr>${list.map(x=>{const c=calc(f,x),p=f.parties.find(q=>q.id==x.party);return`<tr><td>${x.date}</td><td>${TY[x.type]}</td><td>${esc(x.no)}</td><td>${esc(p?p.name:'—')}</td><td class="n">${inr(c.g)}</td><td class="n">${inr(c.tot)}</td><td><button class="d" onclick="delV('${x.id}')">hatayein</button></td></tr>`}).join('')||'<tr><td colspan=7 class="m">Koi voucher nahi.</td></tr>'}</table></div>`;
+}
+function addV(){const f=F();if(!f.parties.length)return alert('Pehle Parties mein party add karein.');
+ const items=[0,1,2].map(i=>({desc:v('d'+i),amt:nv('a'+i),rate:nv('r'+i)})).filter(l=>l.amt>0);
+ if(!items.length)return alert('Kam se kam ek amount bharein.');
+ f.vouchers.push({id:uid(),type:v('vt'),date:v('vd'),no:v('vn'),party:v('vp'),items});save();render()}
+function delV(i){const f=F();f.vouchers=f.vouchers.filter(x=>x.id!=i);save();render()}
+
+function gst(f){
+ const s=sum(f,'sales'),p=sum(f,'purchase');
+ const row=(l,x)=>`<tr><td>${l}</td><td class="n">${inr(x.tx)}</td><td class="n">${inr(x.cg)}</td><td class="n">${inr(x.sg)}</td><td class="n">${inr(x.ig)}</td></tr>`;
+ const net=k=>s[k]-p[k];
+ return`<div class="c t"><b>GSTR-3B jaisa saar</b><table><tr><th></th><th class="n">Taxable</th><th class="n">CGST</th><th class="n">SGST</th><th class="n">IGST</th></tr>${row('Outward (sales)',s)}${row('ITC (purchase)',p)}<tr><td><b>Net payable</b></td><td></td><td class="n"><b>${inr(net('cg'))}</b></td><td class="n"><b>${inr(net('sg'))}</b></td><td class="n"><b>${inr(net('ig'))}</b></td></tr></table>
+ <div class="m">Negative = ITC bacha hua. Real filing se pehle IGST/CGST/SGST ITC set-off rules check karein.</div></div>
+ <h2>GSTR-1 jaisa sales register</h2><div class="c t"><table><tr><th>Date</th><th>No.</th><th>Party (GSTIN)</th><th class="n">Taxable</th><th class="n">GST</th></tr>${f.vouchers.filter(x=>x.type=='sales').map(x=>{const c=calc(f,x),p=f.parties.find(q=>q.id==x.party);return`<tr><td>${x.date}</td><td>${esc(x.no)}</td><td>${esc(p?p.name:'')} ${esc(p&&p.gstin||'(B2C)')}</td><td class="n">${inr(c.tx)}</td><td class="n">${inr(c.g)}</td></tr>`}).join('')||'<tr><td colspan=5 class="m">Koi sales nahi.</td></tr>'}</table></div>
+ <div class="row np"><button class="b s" onclick="print()">Print / PDF</button></div>`;
+}
+
+const slab=(i,sl)=>{let t=0,p=0;for(const[l,r]of sl){if(i>p)t+=(Math.min(i,l)-p)*r;p=l}return t};
+function itr(f){
+ const bp=sum(f,'sales').tx-sum(f,'purchase').tx;
+ const n=(id,l,d)=>`<div><label>${l}</label><input id="${id}" type="number" step="any" value="${d||0}"></div>`;
+ return`<div class="c"><b>Income tax (FY 2025-26 / AY 2026-27 slabs)</b><div class="g" style="margin-top:8px">${n('i1','Salary')}${n('i2','House property (loss ho to minus)')}${n('i3','Business/profession profit',Math.max(0,Math.round(bp)))}${n('i4','Capital gains (slab rate wale)')}${n('i5','Other sources (interest etc.)')}${n('i6','80C (max 1.5 lakh)')}${n('i7','80D')}${n('i8','80CCD(1B) NPS (max 50,000)')}${n('i9','HRA/other exemption (old regime)')}${n('i10','TDS / advance tax bhara')}<div><label>Umar</label><select id="ag"><option value="0">60 se kam</option><option value="60">60–79</option><option value="80">80+</option></select></div></div>
+ <div class="m">Business profit books ke taxable sales−purchase se bhara hai; expenses ke baad badal lein.</div><div class="row"><button class="b" onclick="runItr()">Tax calculate karein</button></div></div><div id="ir"></div>`;
+}
+function runItr(){
+ const sal=nv('i1'),hp=nv('i2'),bz=nv('i3'),cg=nv('i4'),os=nv('i5'),age=nv('ag'),tds=nv('i10');
+ const gross=sal+hp+bz+cg+os;
+ // new regime
+ const nI=Math.max(0,sal+Math.max(hp,0)+bz+cg+os-(sal>0?75000:0));
+ let nt=slab(nI,[[4e5,0],[8e5,.05],[12e5,.1],[16e5,.15],[2e7/1,.2],[Infinity,.3]].map((x,i)=>x));
+ nt=slab(nI,[[4e5,0],[8e5,.05],[12e5,.1],[16e5,.15],[20e5,.2],[24e5,.25],[Infinity,.3]]);
+ if(nI<=12e5)nt=0;else nt=Math.min(nt,nI-12e5);
+ // old regime
+ const d=Math.min(nv('i6'),15e4)+nv('i7')+Math.min(nv('i8'),5e4)+nv('i9');
+ const oI=Math.max(0,sal+Math.max(hp,-2e5)+bz+cg+os-(sal>0?5e4:0)-d);
+ const base=age>=80?5e5:age>=60?3e5:25e4;
+ let ot=slab(oI,[[base,0],[5e5,.05],[1e6,.2],[Infinity,.3]]);
+ if(oI<=5e5)ot=0;
+ const nc=nt*1.04,oc=ot*1.04;
+ const best=nc<=oc?'New regime':'Old regime';
+ $('#ir').innerHTML=`<div class="c t"><table><tr><th></th><th class="n">New regime</th><th class="n">Old regime</th></tr><tr><td>Total income (gross)</td><td class="n">${inr(gross)}</td><td class="n">${inr(gross)}</td></tr><tr><td>Taxable income</td><td class="n">${inr(nI)}</td><td class="n">${inr(oI)}</td></tr><tr><td>Tax (rebate ke baad)</td><td class="n">${inr(nt)}</td><td class="n">${inr(ot)}</td></tr><tr><td>Cess 4%</td><td class="n">${inr(nt*.04)}</td><td class="n">${inr(ot*.04)}</td></tr><tr><td><b>Total tax</b></td><td class="n"><b>${inr(nc)}</b></td><td class="n"><b>${inr(oc)}</b></td></tr><tr><td>TDS/advance tax ke baad</td><td class="n">${inr(nc-tds)}</td><td class="n">${inr(oc-tds)}</td></tr></table>
+ <p><b>${best}</b> aapke liye ${inr(Math.abs(nc-oc))} sasta hai.</p><div class="m">Surcharge (₹50 lakh+), capital gains ke special rates, aur 234A/B/C interest include nahi hain. Filing se pehle CA se verify karein.</div></div>`;
+}
+
+function data(f){
+ return`<div class="c"><b>Tally / Busy / Excel se voucher import (CSV)</b><div class="m">Har line: date,type,party,item,amount,gst% — type: sales / purchase / receipt / payment. Party naya ho to apne aap ban jaati hai.</div>
+ <textarea id="csv" rows="5" placeholder="2026-04-05,sales,Ram Traders,Kitab,5000,12"></textarea>
+ <div class="row"><input id="cf" type="file" accept=".csv,.txt" style="width:auto" onchange="rf(this)"><button class="b" onclick="imp()">Import karein</button></div></div>
+ <div class="c"><b>Backup</b><div class="m">Data sirf is device ke browser mein rehta hai. Roz backup download karein.</div><div class="row"><button class="b" onclick="bk()">Backup download</button><input id="rf" type="file" accept=".json" style="width:auto" onchange="rs(this)"></div></div>`;
+}
+function rf(el){const r=new FileReader();r.onload=()=>$('#csv').value=r.result;if(el.files[0])r.readAsText(el.files[0])}
+function imp(){const f=F();let n=0;
+ for(const ln of v('csv').split(/\r?\n/)){const c=ln.split(',').map(s=>s.trim());if(c.length<5)continue;
+  const ty=c[1].toLowerCase(),am=parseFloat(c[4]);if(!TY[ty]||!(am>0)||!/^\d{4}-\d\d-\d\d$/.test(c[0]))continue;
+  let p=f.parties.find(q=>q.name.toLowerCase()==c[2].toLowerCase());
+  if(!p){p={id:uid(),name:c[2],gstin:'',state:f.state};f.parties.push(p)}
+  f.vouchers.push({id:uid(),type:ty,date:c[0],no:String(f.vouchers.length+1),party:p.id,items:[{desc:c[3],amt:am,rate:parseFloat(c[5])||0}]});n++}
+ save();alert(n+' voucher import hue.');render()}
+function bk(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));a.download='khata-backup.json';a.click()}
+function rs(el){const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.firms)throw 0;db=x;save();render()}catch(e){alert('Yeh valid backup file nahi hai.')}};if(el.files[0])r.readAsText(el.files[0])}
+render();
+</script></body></html>
