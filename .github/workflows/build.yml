@@ -1,0 +1,109 @@
+Claude
+Iska matlab .github/workflows/build.yml file upload nahi hui, jaisa ki hota hai (GitHub kabhi-kabhi .github folder drag-drop mein chhod deta hai). Use haath se bana lete hain:
+
+Apni khata repository ke Code tab mein jaayein.
+Add file dabayein, phir Create new file.
+Upar naam wale box mein ye likhein: .github/workflows/build.yml. Jaise hi / likhenge, folders apne aap ban jayenge, aur aakhir mein build.yml file ka naam dikhega.
+Neeche bade box mein ye poora content paste karein:
+yaml
+name: Build exe and apk
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Khata-Windows-exe
+          path: |
+            dist/*.exe
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: npm install
+      - run: npx cap add android
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Khata-Android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+Upar right mein hara Commit changes... button dabayein, phir popup mein dobara Commit changes.
+Ab Actions tab kholein. Left mein Build exe and apk dikh jayega, aur build apne aap shuru ho gaya hoga (peela chakra).
+Ek aur cheez check kar lein: repository mein package.json, main.js, capacitor.config.json aur www folder (uske andar index.html) upload hue hain ya nahi. Ye na hon to build fail hoga. Agar www folder upload nahi hua, to Add file → Upload files mein extract kiye hue folder se www folder drag karein.
+
+Agar phir bhi dikhe nahi, to Code tab ka screenshot bhej dein, main dekh kar bata dunga ki kya missing hai.
+
+Screenshot 2026-11-04 140158.jpg
+kaha h
+
+Setting up a workflow file through the editor
+Aapke screenshot mein Get started with GitHub Actions page dikh raha hai. Iska matlab hai ki workflow file abhi repository mein hai hi nahi. Isliye “Build exe and apk” nahi dikh raha. Use yahin se bana lete hain:
+
+Is page par “Skip this and set up a workflow yourself →” likha hai (Search workflows box ke upar, neeli link). Us par click karein.
+Ek editor khulega, jisme upar khataa / .github / workflows / main.yml likha hoga. Neeche box mein jo bhi pehle se likha hai, sab select karke delete kar dein (Ctrl+A, phir Delete).
+Ye poora content paste karein:
+yaml
+name: Build exe and apk
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Khata-Windows-exe
+          path: |
+            dist/*.exe
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: npm install
+      - run: npx cap add android
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Khata-Android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+Upar file ke naam main.yml ko badal kar build.yml kar sakte hain. Ye zaroori nahi hai, main.yml rehne par bhi chalega.
+Upar right mein hara Commit changes... button dabayein, phir popup mein dobara Commit changes.
+Phir Actions tab mein jaayein. Left side mein Build exe and apk dikhega, aur build apne aap shuru ho jayega (peela chakra). Chakra hare tick mein badal jaye, tab us par click karke neeche Artifacts se .exe aur .apk download karein.
+Build chalne ke liye repository mein package.json, main.js, capacitor.config.json aur www/index.html bhi hone chahiye. Commit karne se pehle Code tab mein ek baar check kar lein ki ye files wahan hain. Ye na hon, to batayein, main bata dunga ki kaise upload karni hain.
+
+
+Claude works directly with your codebase
+
+
+
+
+Claude is AI and can make mistakes.
+Khata project · ZIP
+Khata project
+ZIP
+No preview available
+Claude finished the response
